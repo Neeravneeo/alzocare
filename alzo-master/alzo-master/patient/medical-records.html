@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALZO - Medical Records</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .primary-button {
+            background-color: #57B5E7;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .primary-button:hover {
+            background-color: #4a9ac5;
+        }
+        .primary-button:disabled {
+            background-color: #a0d1eb;
+            cursor: not-allowed;
+        }
+        .file-drop-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .file-drop-area.active {
+            border-color: #57B5E7;
+            background-color: rgba(87, 181, 231, 0.05);
+        }
+        .thumbnail-container {
+            width: 150px;
+            height: 150px;
+            overflow: hidden;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f9fafb;
+        }
+        .thumbnail-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-sm h-full flex flex-col">
+            <div class="p-4 border-b">
+                <h1 class="text-2xl font-bold text-primary">ALZO</h1>
+                <p class="text-sm text-gray-500">Patient Portal</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="pat.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg">
+                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i class="ri-home-line text-lg text-gray-600"></i>
+                    </div>
+                    <span class="text-sm text-gray-600">Home</span>
+                </a>
+                <a href="games/demo.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg">
+                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i class="ri-brain-line text-lg text-gray-600"></i>
+                    </div>
+                    <span class="text-sm text-gray-600">Tests</span>
+                </a>
+                <a href="medical-records.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-50">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <i class="ri-file-list-3-line text-lg text-primary"></i>
+                    </div>
+                    <span class="text-sm text-primary font-medium">Medical Records</span>
+                </a>
+                <button class="flex items-center space-x-3 px-4 py-3 rounded-lg w-full text-left">
+                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i class="ri-settings-line text-lg text-gray-600"></i>
+                    </div>
+                    <span class="text-sm text-gray-600">Settings</span>
+                </button>
+            </nav>
+            <div class="p-4 border-t">
+                <button id="logoutBtn" class="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+                    <i class="ri-logout-box-line"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 overflow-y-auto">
+            <div class="max-w-4xl mx-auto">
+                <header class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-900">Medical Records</h1>
+                    <p class="text-gray-600">Upload and manage your medical documents securely</p>
+                </header>
+
+                <!-- Upload Section -->
+                <div class="card mb-6">
+                    <h2 class="text-lg font-semibold mb-4">Upload New Document</h2>
+                    
+                    <form id="uploadForm" class="space-y-4">
+                        <div id="dropArea" class="file-drop-area">
+                            <div class="mb-2">
+                                <i class="ri-upload-cloud-2-line text-4xl text-gray-400"></i>
+                            </div>
+                            <p class="text-gray-600 mb-2">Drag and drop your file here, or</p>
+                            <label class="primary-button cursor-pointer">
+                                <span>Browse Files</span>
+                                <input type="file" id="fileInput" class="hidden" accept="image/jpeg,image/png">
+                            </label>
+                            <p class="text-xs text-gray-500 mt-2">Supported formats: JPG, PNG (Max 10MB)</p>
+                        </div>
+
+                        <div id="previewContainer" class="hidden">
+                            <div class="flex items-start space-x-4">
+                                <div class="thumbnail-container">
+                                    <img id="imagePreview" src="#" alt="Document preview">
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between">
+                                        <p id="fileName" class="font-medium text-gray-900"></p>
+                                        <button type="button" id="removeFile" class="text-red-500 hover:text-red-700">
+                                            <i class="ri-delete-bin-line"></i>
+                                        </button>
+                                    </div>
+                                    <p id="fileSize" class="text-sm text-gray-500"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="documentType" class="block text-sm font-medium text-gray-700 mb-1">Document Type</label>
+                                <select id="documentType" name="documentType" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="" disabled selected>Select document type</option>
+                                    <option value="lab_report">Lab Report</option>
+                                    <option value="prescription">Prescription</option>
+                                    <option value="imaging">Imaging/Scan</option>
+                                    <option value="discharge">Discharge Summary</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="documentDate" class="block text-sm font-medium text-gray-700 mb-1">Document Date</label>
+                                <input type="date" id="documentDate" name="documentDate" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+                            <textarea id="notes" name="notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Add any additional information about this document..."></textarea>
+                        </div>
+
+                        <div class="flex justify-end">
+                            <button type="submit" id="uploadButton" class="primary-button" disabled>
+                                <span>Upload Document</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Records List Section -->
+                <div class="card">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold">Your Medical Records</h2>
+                        <div class="flex space-x-2">
+                            <select id="filterType" class="text-sm border border-gray-300 rounded-md px-2 py-1">
+                                <option value="all">All Types</option>
+                                <option value="lab_report">Lab Reports</option>
+                                <option value="prescription">Prescriptions</option>
+                                <option value="imaging">Imaging/Scans</option>
+                                <option value="discharge">Discharge Summaries</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <select id="sortOrder" class="text-sm border border-gray-300 rounded-md px-2 py-1">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="recordsList" class="divide-y">
+                        <div id="noRecords" class="py-8 text-center">
+                            <i class="ri-file-list-3-line text-4xl text-gray-300 mb-2"></i>
+                            <p class="text-gray-500">No medical records found</p>
+                            <p class="text-sm text-gray-400">Upload your first document using the form above</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Upload Success Modal -->
+    <div id="successModal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="bg-white rounded-lg p-6 max-w-md w-full relative z-10">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                    <i class="ri-check-line text-2xl text-green-600"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Upload Successful</h3>
+                <p class="text-gray-500 mb-4">Your medical record has been securely uploaded and stored.</p>
+                <button id="closeModal" class="primary-button w-full">Done</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Check authentication
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            setupFileUpload();
+            loadMedicalRecords();
+            
+            // Event listeners
+            document.getElementById('uploadForm').addEventListener('submit', handleFormSubmit);
+            document.getElementById('closeModal').addEventListener('click', closeSuccessModal);
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('filterType').addEventListener('change', filterRecords);
+            document.getElementById('sortOrder').addEventListener('change', sortRecords);
+        });
+
+       // async function checkAuth() {
+        //    const token = localStorage.getItem('token');
+          //  if (!token) {
+            //    window.location.href = './login.html';
+              //  return;
+           // }
+
+           // try {
+             //   const response = await fetch('/api/auth/verify', {
+               //     method: 'GET',
+                 //   headers: {
+                   //     'Authorization': `Bearer ${token}`
+                 //   }
+                //});
+
+               // if (!response.ok) {
+                 //   throw new Error('Authentication failed');
+               // }
+
+                //const data = await response.json();
+               // if (data.role !== 'patient') {
+                 //   window.location.href = './login.html';
+               // }
+            //} catch (error) {
+              //  console.error('Auth error:', error);
+                //window.location.href = './login.html';
+           // }
+       // } 
+
+        function setupFileUpload() {
+            const dropArea = document.getElementById('dropArea');
+            const fileInput = document.getElementById('fileInput');
+            const previewContainer = document.getElementById('previewContainer');
+            const imagePreview = document.getElementById('imagePreview');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const removeFile = document.getElementById('removeFile');
+            const uploadButton = document.getElementById('uploadButton');
+
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            // Highlight drop area when item is dragged over it
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight() {
+                dropArea.classList.add('active');
+            }
+
+            function unhighlight() {
+                dropArea.classList.remove('active');
+            }
+
+            // Handle dropped files
+            dropArea.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length) {
+                    handleFiles(files);
+                }
+            }
+
+            fileInput.addEventListener('change', function() {
+                if (this.files.length) {
+                    handleFiles(this.files);
+                }
+            });
+
+            function handleFiles(files) {
+                const file = files[0];
+                
+                // Validate file type
+                const validTypes = ['image/jpeg', 'image/png'];
+                if (!validTypes.includes(file.type)) {
+                    alert('Please upload a valid image file (JPG or PNG)');
+                    return;
+                }
+                
+                // Validate file size (10MB max)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('File size exceeds 10MB limit');
+                    return;
+                }
+                
+                // Update preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    fileName.textContent = file.name;
+                    fileSize.textContent = formatFileSize(file.size);
+                    previewContainer.classList.remove('hidden');
+                    dropArea.classList.add('hidden');
+                    uploadButton.disabled = false;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            removeFile.addEventListener('click', function() {
+                previewContainer.classList.add('hidden');
+                dropArea.classList.remove('hidden');
+                fileInput.value = '';
+                uploadButton.disabled = true;
+            });
+
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' bytes';
+                else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                else return (bytes / 1048576).toFixed(1) + ' MB';
+            }
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('fileInput');
+            const documentType = document.getElementById('documentType').value;
+            const documentDate = document.getElementById('documentDate').value;
+            const notes = document.getElementById('notes').value;
+            
+            if (!fileInput.files.length || !documentType || !documentDate) {
+                alert('Please fill in all required fields and select a file');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('documentType', documentType);
+            formData.append('documentDate', documentDate);
+            formData.append('notes', notes);
+            
+            try {
+                const token = localStorage.getItem('token');
+                const uploadButton = document.getElementById('uploadButton');
+                
+                // Disable button and show loading state
+                uploadButton.disabled = true;
+                uploadButton.innerHTML = '<i class="ri-loader-4-line animate-spin mr-1"></i> Uploading...';
+                
+                const response = await fetch('/api/patient/medical-records', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+                
+                // Reset form
+                document.getElementById('uploadForm').reset();
+                document.getElementById('previewContainer').classList.add('hidden');
+                document.getElementById('dropArea').classList.remove('hidden');
+                
+                // Show success modal
+                document.getElementById('successModal').classList.remove('hidden');
+                
+                // Reload records
+                loadMedicalRecords();
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Failed to upload document. Please try again.');
+            } finally {
+                // Reset button state
+                uploadButton.disabled = false;
+                uploadButton.innerHTML = '<span>Upload Document</span>';
+            }
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.add('hidden');
+        }
+
+        async function loadMedicalRecords() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/patient/medical-records', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load records');
+                }
+                
+                const records = await response.json();
+                displayRecords(records);
+                
+            } catch (error) {
+                console.error('Error loading records:', error);
+                // For demo purposes, load mock data
+                loadMockRecords();
+            }
+        }
+
+        function loadMockRecords() {
+            const mockRecords = [
+                {
+                    _id: '1',
+                    fileName: 'blood_test_results.jpg',
+                    documentType: 'lab_report',
+                    documentDate: '2023-04-15',
+                    uploadDate: '2023-04-16T10:30:00Z',
+                    notes: 'Annual blood work results',
+                    thumbnailUrl: 'https://via.placeholder.com/150?text=Lab+Report',
+                    fileSize: 2.4 * 1024 * 1024
+                },
+                {
+                    _id: '2',
+                    fileName: 'prescription_antibiotics.jpg',
+                    documentType: 'prescription',
+                    documentDate: '2023-03-22',
+                    uploadDate: '2023-03-22T15:45:00Z',
+                    notes: 'Prescription for sinus infection',
+                    thumbnailUrl: 'https://via.placeholder.com/150?text=Prescription',
+                    fileSize: 1.8 * 1024 * 1024
+                },
+                {
+                    _id: '3',
+                    fileName: 'chest_xray.png',
+                    documentType: 'imaging',
+                    documentDate: '2023-02-10',
+                    uploadDate: '2023-02-12T09:15:00Z',
+                    notes: 'Chest X-ray for persistent cough',
+                    thumbnailUrl: 'https://via.placeholder.com/150?text=X-ray',
+                    fileSize: 5.7 * 1024 * 1024
+                }
+            ];
+            
+            displayRecords(mockRecords);
+        }
+
+        function displayRecords(records) {
+            const recordsList = document.getElementById('recordsList');
+            const noRecords = document.getElementById('noRecords');
+            
+            if (!records.length) {
+                noRecords.classList.remove('hidden');
+                return;
+            }
+            
+            noRecords.classList.add('hidden');
+            
+            // Clear existing records
+            recordsList.innerHTML = '';
+            
+            // Display records
+            records.forEach(record => {
+                const recordElement = document.createElement('div');
+                recordElement.className = 'py-4 flex items-start';
+                recordElement.dataset.type = record.documentType;
+                recordElement.dataset.date = new Date(record.documentDate).getTime();
+                
+                const documentTypeLabels = {
+                    'lab_report': 'Lab Report',
+                    'prescription': 'Prescription',
+                    'imaging': 'Imaging/Scan',
+                    'discharge': 'Discharge Summary',
+                    'other': 'Other Document'
+                };
+                
+                recordElement.innerHTML = `
+                    <div class="thumbnail-container mr-4 flex-shrink-0">
+                        <img src="${record.thumbnailUrl || 'https://via.placeholder.com/150?text=Document'}" alt="Thumbnail">
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between">
+                            <div>
+                                <h3 class="font-medium text-gray-900">${record.fileName}</h3>
+                                <div class="flex items-center text-sm text-gray-500 mt-1">
+                                    <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mr-2">
+                                        ${documentTypeLabels[record.documentType] || 'Document'}
+                                    </span>
+                                    <span>
+                                        <i class="ri-calendar-line mr-1"></i>
+                                        ${new Date(record.documentDate).toLocaleDateString()}
+                                    </span>
+                                </div>
+                                ${record.notes ? `<p class="text-sm text-gray-600 mt-2">${record.notes}</p>` : ''}
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="text-gray-500 hover:text-gray-700" onclick="viewRecord('${record._id}')">
+                                    <i class="ri-eye-line"></i>
+                                </button>
+                                <button class="text-gray-500 hover:text-gray-700" onclick="downloadRecord('${record._id}')">
+                                    <i class="ri-download-line"></i>
+                                </button>
+                                <button class="text-red-500 hover:text-red-700" onclick="deleteRecord('${record._id}')">
+                                    <i class="ri-delete-bin-line"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 text-xs text-gray-500">
+                            <span>Uploaded: ${new Date(record.uploadDate).toLocaleString()}</span>
+                            <span>${formatFileSize(record.fileSize)}</span>
+                        </div>
+                    </div>
+                `;
+                
+                recordsList.appendChild(recordElement);
+            });
+            
+            // Apply current filters
+            filterRecords();
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' bytes';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            else return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        function filterRecords() {
+            const filterType = document.getElementById('filterType').value;
+            const sortOrder = document.getElementById('sortOrder').value;
+            const records = document.querySelectorAll('#recordsList > div[data-type]');
+            
+            records.forEach(record => {
+                if (filterType === 'all' || record.dataset.type === filterType) {
+                    record.classList.remove('hidden');
+                } else {
+                    record.classList.add('hidden');
+                }
+            });
+            
+            sortRecords();
+        }
+
+        function sortRecords() {
+            const sortOrder = document.getElementById('sortOrder').value;
+            const recordsList = document.getElementById('recordsList');
+            const records = Array.from(recordsList.querySelectorAll('div[data-type]'));
+            
+            records.sort((a, b) => {
+                const dateA = parseInt(a.dataset.date);
+                const dateB = parseInt(b.dataset.date);
+                
+                return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+            });
+            
+            // Clear and re-append in sorted order
+            recordsList.innerHTML = '';
+            records.forEach(record => {
+                recordsList.appendChild(record);
+            });
+        }
+
+        function viewRecord(id) {
+            // In a real app, this would open a modal with the full-size image
+            alert(`Viewing record ${id}`);
+        }
+
+        function downloadRecord(id) {
+            // In a real app, this would trigger a download
+            alert(`Downloading record ${id}`);
+        }
+
+        function deleteRecord(id) {
+            if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
+                // In a real app, this would send a DELETE request to the server
+                alert(`Deleting record ${id}`);
+                // Then reload records
+                loadMedicalRecords();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+        }
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALZO - Patient Medical Records</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .primary-button {
+            background-color: #57B5E7;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .primary-button:hover {
+            background-color: #4a9ac5;
+        }
+        .thumbnail-container {
+            width: 150px;
+            height: 150px;
+            overflow: hidden;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f9fafb;
+        }
+        .thumbnail-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .patient-card {
+            transition: all 0.2s;
+        }
+        .patient-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .patient-card.selected {
+            border: 2px solid #57B5E7;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            background-color: #f8d7da;
+            color: #721c24;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .toast.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-sm h-full flex flex-col">
+            <div class="p-4 border-b">
+                <h1 class="text-2xl font-bold text-primary">ALZO</h1>
+                <p class="text-sm text-gray-500">Doctor Portal</p>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <a href="doc.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg">
+                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i class="ri-home-line text-lg text-gray-600"></i>
+                    </div>
+                    <span class="text-sm text-gray-600">Dashboard</span>
+                </a>
+                <a href="patients.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg">
+                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i class="ri-user-line text-lg text-gray-600"></i>
+                    </div>
+                    <span class="text-sm text-gray-600">Patients</span>
+                </a>
+                <a href="patient-records.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg bg-blue-50">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <i class="ri-file-list-3-line text-lg text-primary"></i>
+                    </div>
+                    <span class="text-sm text-primary font-medium">Medical Records</span>
+                </a>
+                <button class="flex items-center space-x-3 px-4 py-3 rounded-lg w-full text-left">
+                    <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i class="ri-settings-line text-lg text-gray-600"></i>
+                    </div>
+                    <span class="text-sm text-gray-600">Settings</span>
+                </button>
+            </nav>
+            <div class="p-4 border-t">
+                <button id="logoutBtn" class="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+                    <i class="ri-logout-box-line"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 overflow-y-auto">
+            <div class="max-w-6xl mx-auto">
+                <header class="mb-6">
+                    <h1 class="text-2xl font-bold text-gray-900">Patient Medical Records</h1>
+                    <p class="text-gray-600">Access and manage patient medical documents</p>
+                </header>
+
+                <!-- Search Section -->
+                <div class="card mb-6">
+                    <h2 class="text-lg font-semibold mb-4">Find Patient</h2>
+                    
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <div class="flex-1">
+                            <label for="searchType" class="block text-sm font-medium text-gray-700 mb-1">Search By</label>
+                            <select id="searchType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="id">Patient ID</option>
+                                <option value="name">Name</option>
+                                <option value="dob">Date of Birth</option>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label for="searchQuery" class="block text-sm font-medium text-gray-700 mb-1">Search Term</label>
+                            <input type="text" id="searchQuery" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter search term...">
+                        </div>
+                        <div class="flex items-end">
+                            <button id="searchButton" class="primary-button h-10 px-6">
+                                <i class="ri-search-line mr-1"></i> Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Patient Results Section -->
+                <div id="patientResults" class="card mb-6 hidden">
+                    <h2 class="text-lg font-semibold mb-4">Search Results</h2>
+                    
+                    <div id="patientsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Patient cards will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Selected Patient Records Section -->
+                <div id="patientRecordsSection" class="hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold" id="patientName"></h2>
+                            <div class="flex items-center text-sm text-gray-600">
+                                <span id="patientId" class="mr-4"></span>
+                                <span id="patientDob"></span>
+                            </div>
+                        </div>
+                        <button id="backToSearch" class="text-blue-600 hover:text-blue-800 flex items-center">
+                            <i class="ri-arrow-left-line mr-1"></i> Back to Search
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-md font-semibold">Medical Records</h3>
+                            <div class="flex space-x-2">
+                                <select id="filterType" class="text-sm border border-gray-300 rounded-md px-2 py-1">
+                                    <option value="all">All Types</option>
+                                    <option value="lab_report">Lab Reports</option>
+                                    <option value="prescription">Prescriptions</option>
+                                    <option value="imaging">Imaging/Scans</option>
+                                    <option value="discharge">Discharge Summaries</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <select id="sortOrder" class="text-sm border border-gray-300 rounded-md px-2 py-1">
+                                    <option value="newest">Newest First</option>
+                                    <option value="oldest">Oldest First</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="recordsList" class="divide-y">
+                            <div id="noRecords" class="py-8 text-center">
+                                <i class="ri-file-list-3-line text-4xl text-gray-300 mb-2"></i>
+                                <p class="text-gray-500">No medical records found for this patient</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Image Viewer Modal -->
+    <div id="imageModal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-75"></div>
+        <div class="relative z-10 max-w-4xl w-full bg-white rounded-lg shadow-xl overflow-hidden">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h3 id="modalTitle" class="text-lg font-medium text-gray-900"></h3>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="ri-close-line text-2xl"></i>
+                </button>
+            </div>
+            <div class="p-4 bg-gray-100 flex justify-center" style="min-height: 60vh;">
+                <img id="modalImage" src="" alt="Medical record" class="max-w-full max-h-[60vh] object-contain">
+            </div>
+            <div class="p-4 border-t bg-white">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p id="modalDate" class="text-sm text-gray-600"></p>
+                        <p id="modalNotes" class="text-sm text-gray-600 mt-1"></p>
+                    </div>
+                    <div>
+                        <button id="downloadImage" class="primary-button">
+                            <i class="ri-download-line mr-1"></i> Download
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with your Supabase URL
+        const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your Supabase anon key
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // DOM Elements
+        const searchTypeEl = document.getElementById('searchType');
+        const searchQueryEl = document.getElementById('searchQuery');
+        const searchButtonEl = document.getElementById('searchButton');
+        const patientResultsEl = document.getElementById('patientResults');
+        const patientsListEl = document.getElementById('patientsList');
+        const patientRecordsSectionEl = document.getElementById('patientRecordsSection');
+        const patientNameEl = document.getElementById('patientName');
+        const patientIdEl = document.getElementById('patientId');
+        const patientDobEl = document.getElementById('patientDob');
+        const backToSearchEl = document.getElementById('backToSearch');
+        const filterTypeEl = document.getElementById('filterType');
+        const sortOrderEl = document.getElementById('sortOrder');
+        const recordsListEl = document.getElementById('recordsList');
+        const noRecordsEl = document.getElementById('noRecords');
+        const imageModalEl = document.getElementById('imageModal');
+        const modalTitleEl = document.getElementById('modalTitle');
+        const modalImageEl = document.getElementById('modalImage');
+        const modalDateEl = document.getElementById('modalDate');
+        const modalNotesEl = document.getElementById('modalNotes');
+        const closeModalEl = document.getElementById('closeModal');
+        const downloadImageEl = document.getElementById('downloadImage');
+        const logoutBtnEl = document.getElementById('logoutBtn');
+        const toastEl = document.getElementById('toast');
+        const toastMessageEl = document.getElementById('toastMessage');
+
+        // Current state
+        let currentPatient = null;
+        let currentRecords = [];
+        let currentRecord = null;
+
+        // Check if user is authenticated
+        async function checkAuth() {
+            const { data: { user }, error } = await supabase.auth.getUser();
+            
+            if (error || !user) {
+                // Redirect to login page if not authenticated
+                window.location.href = '../login.html';
+            }
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'error') {
+            toastMessageEl.textContent = message;
+            toastEl.className = `toast ${type}`;
+            toastEl.classList.add('show');
+            
+            setTimeout(() => {
+                toastEl.classList.remove('show');
+            }, 3000);
+        }
+
+        // Search for patients
+        async function searchPatients() {
+            const searchType = searchTypeEl.value;
+            const searchQuery = searchQueryEl.value.trim();
+            
+            if (!searchQuery) {
+                showToast('Please enter a search term');
+                return;
+            }
+            
+            // Show loading state
+            searchButtonEl.innerHTML = '<span class="loading"></span>';
+            searchButtonEl.disabled = true;
+            
+            try {
+                let query = supabase.from('patients').select('*');
+                
+                // Apply filter based on search type
+                if (searchType === 'id') {
+                    query = query.eq('id', searchQuery);
+                } else if (searchType === 'name') {
+                    query = query.ilike('name', `%${searchQuery}%`);
+                } else if (searchType === 'dob') {
+                    query = query.eq('date_of_birth', searchQuery);
+                }
+                
+                const { data, error } = await query;
+                
+                if (error) throw error;
+                
+                // Display results
+                displayPatientResults(data);
+            } catch (error) {
+                console.error('Error searching patients:', error);
+                showToast('Failed to search patients: ' + error.message);
+            } finally {
+                // Reset button state
+                searchButtonEl.innerHTML = '<i class="ri-search-line mr-1"></i> Search';
+                searchButtonEl.disabled = false;
+            }
+        }
+
+        // Display patient search results
+        function displayPatientResults(patients) {
+            patientsListEl.innerHTML = '';
+            
+            if (patients.length === 0) {
+                patientsListEl.innerHTML = `
+                    <div class="col-span-full py-8 text-center">
+                        <i class="ri-user-search-line text-4xl text-gray-300 mb-2"></i>
+                        <p class="text-gray-500">No patients found matching your search criteria</p>
+                    </div>
+                `;
+            } else {
+                patients.forEach(patient => {
+                    const patientCard = document.createElement('div');
+                    patientCard.className = 'patient-card card p-4 cursor-pointer';
+                    patientCard.innerHTML = `
+                        <div class="flex items-center">
+                            <div class="thumbnail-container mr-4">
+                                <img src="${patient.profile_image || 'https://via.placeholder.com/150?text=No+Image'}" alt="${patient.name}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
+                            </div>
+                            <div>
+                                <h3 class="font-medium">${patient.name}</h3>
+                                <p class="text-sm text-gray-600">ID: ${patient.id}</p>
+                                <p class="text-sm text-gray-600">DOB: ${formatDate(patient.date_of_birth)}</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    patientCard.addEventListener('click', () => {
+                        // Remove selected class from all cards
+                        document.querySelectorAll('.patient-card').forEach(card => {
+                            card.classList.remove('selected');
+                        });
+                        
+                        // Add selected class to clicked card
+                        patientCard.classList.add('selected');
+                        
+                        // Set current patient and fetch records
+                        currentPatient = patient;
+                        fetchPatientRecords(patient.id);
+                    });
+                    
+                    patientsListEl.appendChild(patientCard);
+                });
+            }
+            
+            patientResultsEl.classList.remove('hidden');
+        }
+
+        // Fetch patient medical records
+        async function fetchPatientRecords(patientId) {
+            try {
+                // Show patient info
+                patientNameEl.textContent = currentPatient.name;
+                patientIdEl.textContent = `ID: ${currentPatient.id}`;
+                patientDobEl.textContent = `DOB: ${formatDate(currentPatient.date_of_birth)}`;
+                
+                // Fetch records from Supabase
+                const { data, error } = await supabase
+                    .from('medical_records')
+                    .select('*')
+                    .eq('patient_id', patientId);
+                
+                if (error) throw error;
+                
+                currentRecords = data;
+                displayPatientRecords(data);
+                
+                // Show records section
+                patientRecordsSectionEl.classList.remove('hidden');
+                
+                // Scroll to records section
+                patientRecordsSectionEl.scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                console.error('Error fetching patient records:', error);
+                showToast('Failed to fetch patient records: ' + error.message);
+            }
+        }
+
+        // Display patient medical records
+        function displayPatientRecords(records) {
+            // Apply filters
+            const filterType = filterTypeEl.value;
+            const sortOrder = sortOrderEl.value;
+            
+            // Filter records by type if needed
+            let filteredRecords = records;
+            if (filterType !== 'all') {
+                filteredRecords = records.filter(record => record.type === filterType);
+            }
+            
+            // Sort records by date
+            filteredRecords.sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                
+                return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
+            });
+            
+            // Display records
+            if (filteredRecords.length === 0) {
+                noRecordsEl.classList.remove('hidden');
+                recordsListEl.innerHTML = '';
+                recordsListEl.appendChild(noRecordsEl);
+            } else {
+                noRecordsEl.classList.add('hidden');
+                recordsListEl.innerHTML = '';
+                
+                filteredRecords.forEach(record => {
+                    const recordItem = document.createElement('div');
+                    recordItem.className = 'py-4 flex items-start cursor-pointer hover:bg-gray-50';
+                    recordItem.innerHTML = `
+                        <div class="thumbnail-container mr-4" style="width: 80px; height: 80px;">
+                            <img src="${record.image_url || 'https://via.placeholder.com/80?text=No+Image'}" alt="${record.title}" onerror="this.src='https://via.placeholder.com/80?text=No+Image'">
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-medium">${record.title}</h4>
+                            <p class="text-sm text-gray-600">${formatDate(record.date)}</p>
+                            <p class="text-sm text-gray-600">${getRecordTypeLabel(record.type)}</p>
+                            <p class="text-sm text-gray-700 mt-1 line-clamp-2">${record.notes || 'No additional notes'}</p>
+                        </div>
+                    `;
+                    
+                    recordItem.addEventListener('click', () => {
+                        openImageModal(record);
+                    });
+                    
+                    recordsListEl.appendChild(recordItem);
+                });
+            }
+        }
+
+        // Open image modal
+        function openImageModal(record) {
+            currentRecord = record;
+            
+            modalTitleEl.textContent = record.title;
+            modalImageEl.src = record.image_url || 'https://via.placeholder.com/400?text=No+Image';
+            modalDateEl.textContent = `Date: ${formatDate(record.date)}`;
+            modalNotesEl.textContent = record.notes || 'No additional notes';
+            
+            imageModalEl.classList.remove('hidden');
+        }
+
+        // Close image modal
+        function closeImageModal() {
+            imageModalEl.classList.add('hidden');
+            currentRecord = null;
+        }
+
+        // Download image
+        function downloadImage() {
+            if (!currentRecord || !currentRecord.image_url) {
+                showToast('No image available to download');
+                return;
+            }
+            
+            const a = document.createElement('a');
+            a.href = currentRecord.image_url;
+            a.download = `${currentRecord.title.replace(/\s+/g, '_')}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // Handle logout
+        async function logout() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                
+                window.location.href = '../login.html';
+            } catch (error) {
+                console.error('Error logging out:', error);
+                showToast('Failed to log out: ' + error.message);
+            }
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        // Get record type label
+        function getRecordTypeLabel(type) {
+            const types = {
+                'lab_report': 'Lab Report',
+                'prescription': 'Prescription',
+                'imaging': 'Imaging/Scan',
+                'discharge': 'Discharge Summary',
+                'other': 'Other'
+            };
+            
+            return types[type] || 'Unknown';
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check authentication
+            checkAuth();
+            
+            // Search button
+            searchButtonEl.addEventListener('click', searchPatients);
+            
+            // Search on Enter key
+            searchQueryEl.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    searchPatients();
+                }
+            });
+            
+            // Back to search button
+            backToSearchEl.addEventListener('click', () => {
+                patientRecordsSectionEl.classList.add('hidden');
+                currentPatient = null;
+            });
+            
+            // Filter and sort changes
+            filterTypeEl.addEventListener('change', () => {
+                if (currentRecords.length > 0) {
+                    displayPatientRecords(currentRecords);
+                }
+            });
+            
+            sortOrderEl.addEventListener('change', () => {
+                if (currentRecords.length > 0) {
+                    displayPatientRecords(currentRecords);
+                }
+            });
+            
+            // Modal close button
+            closeModalEl.addEventListener('click', closeImageModal);
+            
+            // Close modal when clicking outside
+            imageModalEl.addEventListener('click', (e) => {
+                if (e.target === imageModalEl) {
+                    closeImageModal();
+                }
+            });
+            
+            // Download image button
+            downloadImageEl.addEventListener('click', downloadImage);
+            
+            // Logout button
+            logoutBtnEl.addEventListener('click', logout);
+        });
+    </script>
+</body>
+</html>
